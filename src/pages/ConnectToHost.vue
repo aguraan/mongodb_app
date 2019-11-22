@@ -19,6 +19,7 @@
 <script>
 import { mapGetters } from 'vuex'
 import { UPDATE_HOST, UPDATE_PORT, CONNECT } from '@/mutationTypes'
+import preloadDataByRoute from '@/helpers/preloadDataByRoute'
 export default {
     name: 'ConnectToHost',
     data: () => ({
@@ -51,5 +52,16 @@ export default {
             })
         }
     },
+    beforeRouteLeave(to, from, next) {
+        if (this.connected) {
+            preloadDataByRoute(to)
+            .then(() => {
+                next()
+            })
+        } else {
+            alert('Connection failed.')
+            next(false)
+        }
+    }
 }
 </script>

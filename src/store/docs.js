@@ -1,5 +1,5 @@
 import dbService from '@/services/dbService'
-import { LOADING_START, LOADING_END, LOAD_DOCUMENTS, GET_OBJECT_ID, UPDATE_DOCUMENT, DELETE_DOCUMENT } from '@/mutationTypes'
+import { LOAD_DOCUMENTS, GET_OBJECT_ID, UPDATE_DOCUMENT, DELETE_DOCUMENT, CACHE_PUT } from '@/mutationTypes'
 export default {
     state: {
         docs: [],
@@ -18,64 +18,52 @@ export default {
     actions: {
         [GET_OBJECT_ID]({ commit }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.generateObjectId()
+                dbService('generateObjectId')
                 .then(({ data }) => {
                     commit(GET_OBJECT_ID, data)
-                    commit(LOADING_END)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })
         },
-        [LOAD_DOCUMENTS]({ commit }, params) {
-            const { dbname, collname } = params
+        [LOAD_DOCUMENTS]({ commit }, { cacheKey, dbName, collName }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.loadDocuments(dbname, collname)
+                dbService('loadDocuments', dbName, collName)
                 .then(({ data }) => {
                     commit(LOAD_DOCUMENTS, data)
-                    commit(LOADING_END)
+                    commit(CACHE_PUT, [cacheKey, data])
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })
         },
-        [UPDATE_DOCUMENT]({ commit }, params) {
-            const { dbname, collname, editedIndex} = params
+        [UPDATE_DOCUMENT]({ commit }, payload) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.updateDocument(dbname, collname, params)
+                const { dbname, collname, editedIndex, document } = payload
+                dbService('updateDocument', dbname, collname, document)
                 .then(({ data }) => {
                     commit(UPDATE_DOCUMENT, { editedIndex, data })
-                    commit(LOADING_END)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })
         },
-        [DELETE_DOCUMENT]({ commit, getters }, params) {
-            const { dbname, collname, doc } = params
+        [DELETE_DOCUMENT]({ commit, getters }, payload) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.deleteDocument(dbname, collname, doc._id)
+                const { dbname, collname, document } = payload
+                dbService('deleteDocument', dbname, collname, document._id)
                 .then(({ data }) => {
-                    const index = getters.docs.indexOf(doc)
+                    const index = getters.docs.indexOf(document)
                     commit(DELETE_DOCUMENT, index)
-                    commit(LOADING_END)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })

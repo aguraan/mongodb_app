@@ -98,7 +98,8 @@
     </v-data-table>
 </template>
 <script>
-import { LOAD_DOCUMENTS, DROP_COLLECTION, CREATE_COLLECTION } from '@/mutationTypes'
+import { LOAD_COLLECTIONS, DROP_COLLECTION, CREATE_COLLECTION } from '@/mutationTypes'
+import preloadDataByRoute from '@/helpers/preloadDataByRoute'
 export default {
     name: 'collections',
     data: () => ({
@@ -151,16 +152,20 @@ export default {
     methods: {
         openCollection(collname) {
             const { database } = this.$route.params
-            this.$store.dispatch(LOAD_DOCUMENTS, {
-                collname,
-                dbname: database
-            })
-            .then(() => {
-                this.$router.push(`/databases/${database}/${collname}`)
-            })
+            this.$router.push(`/databases/${database}/${collname}`)
         },
         initialize() {
-            this.colls = this.$store.getters.colls
+            const colls = this.$store.getters.colls
+            if (colls.length) {
+                return this.colls = colls
+            }
+            this.$store.dispatch(LOAD_COLLECTIONS, {
+                cacheKey: this.$route.fullPath,
+                dbName: this.$route.params.database
+            })
+            .then(colls => {
+                this.colls = colls
+            })
         },
         deleteItem(item) {
             if (confirm(`Are you sure you want to delete "${item.name}" collection?`)) {
@@ -168,15 +173,16 @@ export default {
                     dbname: this.$route.params.database,
                     coll: item
                 })
-                .then(() => {
-                    this.initialize()
+                .then(status => {
+                    if (status) this.initialize()
+                    else alert('The collection has not been removed')
                 })
             } 
         },
         close() {
             this.dialog = false
             setTimeout(() => {
-                this.newItem = Object.assign({}, this.defaultItem)
+                this.newItem = { ...this.defaultItem }   //   Object.assign({}, this.defaultItem)
             }, 300)
         },
         save() {
@@ -192,6 +198,12 @@ export default {
         convertValues(size) {
             return size > 1024 ? (size / 1024).toFixed(1) + ' kB' : size.toFixed(1) + ' B'
         }
+    },
+    beforeRouteLeave(to, from, next) {
+        preloadDataByRoute(to)
+        .then(() => {
+            next()
+        })
     },
 }
 </script>

@@ -1,92 +1,59 @@
 import dbService from '@/services/dbService'
-import { LOADING_START, LOADING_END, CONNECT, DISCONNECT, CONNECTED, DISCONNECTED, UPDATE_HOST, UPDATE_PORT, LOAD_DATABASES,
-         ADD_DATABASE, REMOVE_DATABASE, CREATE_DATABASE, DROP_DATABASE } from '@/mutationTypes'
+import { createHash } from '@/helpers'
+import { 
+    LOADING_START, LOADING_END, CONNECT, DISCONNECT, CONNECTED, 
+    DISCONNECTED, UPDATE_HOST, UPDATE_PORT, CACHE_PUT 
+} from '@/mutationTypes'
 export default {
     state: {
         loading: false,
         connected: false,
+        operations: 0,
         host: 'localhost',
         port: '27017',
-        databases: []
+        cache: new Map(),
     },
     getters: {
-        loading: state => state.loading,
+        loading: state => !!state.operations,
+        operations: state => state.operations,
         connected: state => state.connected,
         host: state => state.host,
         port: state => state.port,
-        databases: state => state.databases
+        cache: state => state.cache,
+        hasInCache: state => key => state.cache.has( createHash(key) ),
+        getFromCache: state => key => state.cache.get( createHash(key) ),
     },
     mutations: {
-        [LOADING_START]: state => state.loading = true,
-        [LOADING_END]: state => state.loading = false,
+        [LOADING_START]: state => state.operations++,
+        [LOADING_END]: state => state.operations--,
         [CONNECTED]: state => state.connected = true,
         [DISCONNECTED]: state => state.connected = false,
         [UPDATE_HOST]: (state, val) => state.host = val,
         [UPDATE_PORT]: (state, val) => state.port = val,
-        [LOAD_DATABASES]: (state, val) => state.databases = val,
-        [ADD_DATABASE]: (state, val) => state.databases.push(val),
-        [REMOVE_DATABASE]: (state, index) => state.databases.splice(index, 1)
+        [CACHE_PUT]: (state, data) => state.cache.set(createHash(data[0]), data[1]),
     },
     actions: {
-        [CONNECT]({getters, commit}) {
+        [CONNECT]({ getters, commit }) {
             return new Promise((resolve, reject) => {
                 const { host, port } = getters
-                commit(LOADING_START)
-                dbService.connect({ host, port })
+                dbService('connect', { host, port })
                 .then(({ data }) => {
-                    commit(LOADING_END)
                     commit(CONNECTED)
-                    commit(LOAD_DATABASES, data)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
-                
             })
         },
         [DISCONNECT]({ commit }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.disconnect()
+                dbService('disconnect')
                 .then(({ data }) => {
                     commit(DISCONNECTED)
-                    commit(LOADING_END)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
-                    reject(err)
-                })
-            })
-        },
-        [CREATE_DATABASE]({commit}, form) {
-            return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.createDatabase(form)
-                .then(({ data }) => {
-                    commit(ADD_DATABASE, data)
-                    commit(LOADING_END)
-                    resolve(data)
-                })
-                .catch(err => {
-                    commit(LOADING_END)
-                    reject(err)
-                })
-            })
-        },
-        [DROP_DATABASE]({commit, getters}, db) {
-            return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.dropDatabase(db.db)
-                .then(({ data }) => {
-                    const index = getters.databases.indexOf(db)
-                    commit(REMOVE_DATABASE, index)
-                    commit(LOADING_END)
-                    resolve(data)
-                }).catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })

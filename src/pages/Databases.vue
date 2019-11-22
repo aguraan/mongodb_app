@@ -98,7 +98,8 @@
     </v-data-table>
 </template>
 <script>
-import { LOAD_COLLECTIONS, DROP_DATABASE, CREATE_DATABASE } from '@/mutationTypes'
+import { DROP_DATABASE, CREATE_DATABASE, LOAD_DATABASES } from '@/mutationTypes'
+import preloadDataByRoute from '@/helpers/preloadDataByRoute'
 export default {
     name: 'databases',
     data: () => ({
@@ -150,24 +151,33 @@ export default {
     },
     methods: {
         openDatabase(name) {
-            this.$store.dispatch(LOAD_COLLECTIONS, name)
-            .then(() => {
-                this.$router.push(`/databases/${name}`)
-            })
+            this.$router.push(`/databases/${name}`)
         },
         initialize() {
-            this.databases = this.$store.getters.databases
+            const databases = this.$store.getters.databases
+            if (databases.length) {
+                this.databases = databases
+                return
+            }
+            this.$store.dispatch(LOAD_DATABASES, { 
+                cacheKey: this.$route.fullPath
+            })
+            .then(databases => {
+                this.databases = databases
+            })
         },
         deleteItem(item) {
-            confirm(`Are you sure you want to delete "${item.db}" database?`) && this.$store.dispatch(DROP_DATABASE, item)
-            .then(() => {
-                this.initialize()
+            confirm(`Are you sure you want to delete "${item.db}" database?`) && 
+            this.$store.dispatch(DROP_DATABASE, item)
+            .then(status => {
+                if (status) this.initialize()
+                else alert('The database has not been removed')
             })
         },
         close() {
             this.dialog = false
             setTimeout(() => {
-                this.newItem = Object.assign({}, this.defaultItem)
+                this.newItem =  { ...this.defaultItem }  // Object.assign({}, this.defaultItem)
             }, 300)
         },
         save() {
@@ -179,7 +189,13 @@ export default {
         },
         convertValues(size) {
             return size > 1024 ? (size / 1024).toFixed(1) + ' kB' : size.toFixed(1) + ' B'
-        }
+        },
+    },
+    beforeRouteLeave(to, from, next) {
+        preloadDataByRoute(to)
+        .then(() => {
+            next()
+        })
     },
 }
 </script>

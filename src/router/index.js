@@ -6,6 +6,9 @@ import Databases from '@/pages/Databases.vue'
 import Collections from '@/pages/Collections.vue'
 import Documents from '@/pages/Documents.vue'
 
+import store from '@/store'
+import { CONNECT } from '@/mutationTypes'
+
 Vue.use(VueRouter)
 
 const router = new VueRouter({
@@ -34,6 +37,16 @@ const router = new VueRouter({
         }
 
     ]
+})
+
+router.beforeEach((to, from, next) => {
+    if (!store.getters.connected && to.fullPath !== '/') {
+        store.dispatch(CONNECT)
+        .then(() => {
+            next()
+        })
+    }
+    next()
 })
 
 export default router

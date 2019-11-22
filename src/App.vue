@@ -48,14 +48,6 @@ export default {
 	computed: {
 		...mapGetters(['loading', 'connected'])
 	},
-	created() {
-		if (!this.connected && this.$route.fullPath !== '/') {
-			this.$store.dispatch(DISCONNECT)
-			.then(() => {
-				this.$router.push('/')
-			})
-		}
-	},
 	methods: {
 		disconnect() {
 			if (confirm('Are you sure you want to disconnect?')) {
@@ -64,7 +56,7 @@ export default {
 					this.$router.push('/')
 				})
 			}
-		}
+		},
 	},
 }
 </script>

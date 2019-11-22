@@ -1,6 +1,6 @@
 import dbService from '@/services/dbService'
-import { LOADING_START, LOADING_END, LOAD_COLLECTIONS, ADD_COLLECTION, REMOVE_COLLECTION, 
-         DROP_COLLECTION, CREATE_COLLECTION } from '@/mutationTypes'
+import { LOAD_COLLECTIONS, ADD_COLLECTION, REMOVE_COLLECTION, 
+         DROP_COLLECTION, CREATE_COLLECTION, CACHE_PUT } from '@/mutationTypes'
 export default {
     state: {
         colls: [],
@@ -14,49 +14,39 @@ export default {
         [REMOVE_COLLECTION]: (state, index) => state.colls.splice(index, 1),
     },
     actions: {
-        [LOAD_COLLECTIONS]({commit}, name) {
+        [LOAD_COLLECTIONS]({ commit }, { cacheKey, dbName }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.loadCollections(name)
+                dbService('loadCollections', dbName)
                 .then(({ data }) => {
                     commit(LOAD_COLLECTIONS, data)
-                    commit(LOADING_END)
+                    commit(CACHE_PUT, [cacheKey, data])
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })
         },
-        [CREATE_COLLECTION]({commit}, params) {
-            const { dbname, coll } = params
+        [CREATE_COLLECTION]({commit}, { dbname, coll }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.createCollection(dbname, coll)
+                dbService('createCollection', dbname, coll)
                 .then(({ data }) => {
-                    commit(LOADING_END)
                     commit(ADD_COLLECTION, data)
                     resolve(data)
                 })
                 .catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })
         },
-        [DROP_COLLECTION]({commit, getters}, params) {
-            const { dbname, coll } = params
+        [DROP_COLLECTION]({commit, getters}, { dbname, coll }) {
             return new Promise((resolve, reject) => {
-                commit(LOADING_START)
-                dbService.dropCollection(dbname, coll.name)
+                dbService('dropCollection', dbname, coll.name)
                 .then(({ data }) => {
                     const index = getters.colls.indexOf(coll)
                     commit(REMOVE_COLLECTION, index)
-                    commit(LOADING_END)
                     resolve(data)
                 }).catch(err => {
-                    commit(LOADING_END)
                     reject(err)
                 })
             })

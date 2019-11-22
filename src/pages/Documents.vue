@@ -127,7 +127,7 @@
     </v-data-table>
 </template>
 <script>
-import { GET_OBJECT_ID, UPDATE_DOCUMENT, DELETE_DOCUMENT } from '@/mutationTypes'
+import { GET_OBJECT_ID, UPDATE_DOCUMENT, DELETE_DOCUMENT, LOAD_DOCUMENTS } from '@/mutationTypes'
 import SEditDialog from '@/components/SEditDialog.vue'
 export default {
     name: 'documents',
@@ -159,7 +159,18 @@ export default {
     },
     methods: {
         initialize() {
-            this.docs = this.$store.getters.docs
+            const docs = this.$store.getters.docs
+            if (docs.length) {
+                return this.docs = docs
+            }
+            this.$store.dispatch(LOAD_DOCUMENTS, {
+                cacheKey: this.$route.fullPath,
+                dbName: this.$route.params.database,
+                collName: this.$route.params.collection
+            })
+            .then(docs => {
+                this.docs = docs
+            })
         },
         generateId() {
             this.$store.dispatch(GET_OBJECT_ID)
@@ -169,7 +180,6 @@ export default {
         },
         editItem(item) {
             this.editedIndex = this.docs.indexOf(item)
-            // this.editedItem = this.objToArr(item)
             this.editedItem = Object.entries(item)
         },
         deleteIfEmpty(i) {
@@ -198,10 +208,9 @@ export default {
             }, 300)
         },
         update() {
-            // const doc = this.arrToObj(this.editedItem)
-            const doc = Object.fromEntries(this.editedItem)
+            const document = Object.fromEntries(this.editedItem)
             this.$store.dispatch(UPDATE_DOCUMENT, {
-                doc,
+                document,
                 editedIndex: this.editedIndex,
                 dbname: this.$route.params.database,
                 collname: this.$route.params.collection
@@ -216,7 +225,7 @@ export default {
                 this.$store.dispatch(DELETE_DOCUMENT, {
                     dbname: this.$route.params.database,
                     collname: this.$route.params.collection,
-                    doc: item
+                    document: item
                 })
                 .then(() => {
                     this.initialize()
@@ -231,20 +240,6 @@ export default {
             setTimeout(() => {
                 this.editedItem = {}
             }, 300)
-        },
-        objToArr(obj) {
-            const arr = []
-            for (let key in obj) {
-                arr.push([key, obj[key]])
-            }
-            return arr
-        },
-        arrToObj(arr) {
-            const obj = {}
-            arr.forEach(item => {
-                obj[item[0]] = item[1]
-            })
-            return obj
         }
     },
 }
